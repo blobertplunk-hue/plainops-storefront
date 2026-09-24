@@ -1,0 +1,43 @@
+name: Build Rapier Bowling Vendor
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/energy-motion-bowling/index.html'
+      - '.github/workflows/build-rapier-bowling-vendor.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  vendor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download pinned Rapier 2D compat module
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p docs/energy-motion-bowling/vendor
+          curl --fail --location --retry 3 \
+            'https://unpkg.com/@dimforge/rapier2d-compat@0.20.0/dist/rapier.mjs' \
+            --output docs/energy-motion-bowling/vendor/rapier.mjs
+          bytes=$(wc -c < docs/energy-motion-bowling/vendor/rapier.mjs)
+          test "$bytes" -gt 1500000
+          test "$bytes" -lt 4000000
+          sha256sum docs/energy-motion-bowling/vendor/rapier.mjs > docs/energy-motion-bowling/vendor/rapier.mjs.sha256
+      - name: Commit generated vendor asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/energy-motion-bowling/vendor/rapier.mjs docs/energy-motion-bowling/vendor/rapier.mjs.sha256
+          if git diff --cached --quiet; then
+            echo 'Vendor asset already current.'
+          else
+            git commit -m 'Build Rapier bowling vendor asset'
+            git push
+          fi
